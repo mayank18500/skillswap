@@ -13,8 +13,12 @@
     "@supabase/supabase-js": "^2.50.5",
     "lucide-react": "^0.344.0",
     "react": "^18.3.1",
+<<<<<<< HEAD
     "react-dom": "^18.3.1",
     "react-router-dom": "^7.6.3"
+=======
+    "react-dom": "^18.3.1"
+>>>>>>> 53431862abacc10c27089fad9ca7eb9e4ba84fce
   },
   "devDependencies": {
     "@eslint/js": "^9.9.1",
@@ -30,6 +34,10 @@
     "tailwindcss": "^3.4.1",
     "typescript": "^5.5.3",
     "typescript-eslint": "^8.3.0",
+<<<<<<< HEAD
     "vite": "^6.3.5"
+=======
+    "vite": "^5.4.2"
+>>>>>>> 53431862abacc10c27089fad9ca7eb9e4ba84fce
   }
 }
