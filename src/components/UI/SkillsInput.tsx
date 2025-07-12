@@ -1,19 +1,19 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Plus } from 'lucide-react';
 
-interface SkillsInputProps {
-  value: string[];
+export interface SkillsInputProps {
+  selected: string[];
   onChange: (skills: string[]) => void;
-  suggestions: string[];
+  options: string[];
   placeholder: string;
   className?: string;
   maxSuggestions?: number;
 }
 
 export const SkillsInput: React.FC<SkillsInputProps> = ({
-  value,
+  selected,
   onChange,
-  suggestions,
+  options,
   placeholder,
   className = '',
   maxSuggestions = 8
@@ -27,25 +27,27 @@ export const SkillsInput: React.FC<SkillsInputProps> = ({
 
   useEffect(() => {
     if (inputValue.trim()) {
-      const filtered = suggestions
-        .filter(suggestion => 
-          suggestion.toLowerCase().includes(inputValue.toLowerCase()) &&
-          !value.some(skill => skill.toLowerCase() === suggestion.toLowerCase())
+      const filtered = options
+        .filter(
+          (suggestion) =>
+            suggestion.toLowerCase().includes(inputValue.toLowerCase()) &&
+            !selected.some((skill) => skill.toLowerCase() === suggestion.toLowerCase())
         )
         .slice(0, maxSuggestions);
       setFilteredSuggestions(filtered);
       setIsOpen(filtered.length > 0);
     } else {
-      const availableSuggestions = suggestions
-        .filter(suggestion => 
-          !value.some(skill => skill.toLowerCase() === suggestion.toLowerCase())
+      const availableSuggestions = options
+        .filter(
+          (suggestion) =>
+            !selected.some((skill) => skill.toLowerCase() === suggestion.toLowerCase())
         )
         .slice(0, maxSuggestions);
       setFilteredSuggestions(availableSuggestions);
       setIsOpen(false);
     }
     setHighlightedIndex(-1);
-  }, [inputValue, suggestions, value, maxSuggestions]);
+  }, [inputValue, options, selected, maxSuggestions]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -68,9 +70,10 @@ export const SkillsInput: React.FC<SkillsInputProps> = ({
 
   const handleInputFocus = () => {
     if (!inputValue.trim()) {
-      const availableSuggestions = suggestions
-        .filter(suggestion => 
-          !value.some(skill => skill.toLowerCase() === suggestion.toLowerCase())
+      const availableSuggestions = options
+        .filter(
+          (suggestion) =>
+            !selected.some((skill) => skill.toLowerCase() === suggestion.toLowerCase())
         )
         .slice(0, maxSuggestions);
       setFilteredSuggestions(availableSuggestions);
@@ -80,8 +83,11 @@ export const SkillsInput: React.FC<SkillsInputProps> = ({
 
   const addSkill = (skill: string) => {
     const trimmedSkill = skill.trim();
-    if (trimmedSkill && !value.some(s => s.toLowerCase() === trimmedSkill.toLowerCase())) {
-      onChange([...value, trimmedSkill]);
+    if (
+      trimmedSkill &&
+      !selected.some((s) => s.toLowerCase() === trimmedSkill.toLowerCase())
+    ) {
+      onChange([...selected, trimmedSkill]);
       setInputValue('');
       setIsOpen(false);
       inputRef.current?.focus();
@@ -89,7 +95,7 @@ export const SkillsInput: React.FC<SkillsInputProps> = ({
   };
 
   const removeSkill = (skillToRemove: string) => {
-    onChange(value.filter(skill => skill !== skillToRemove));
+    onChange(selected.filter((skill) => skill !== skillToRemove));
   };
 
   const handleSuggestionClick = (suggestion: string) => {
@@ -107,8 +113,8 @@ export const SkillsInput: React.FC<SkillsInputProps> = ({
       return;
     }
 
-    if (e.key === 'Backspace' && !inputValue && value.length > 0) {
-      removeSkill(value[value.length - 1]);
+    if (e.key === 'Backspace' && !inputValue && selected.length > 0) {
+      removeSkill(selected[selected.length - 1]);
       return;
     }
 
@@ -117,13 +123,13 @@ export const SkillsInput: React.FC<SkillsInputProps> = ({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setHighlightedIndex(prev => 
+        setHighlightedIndex((prev) =>
           prev < filteredSuggestions.length - 1 ? prev + 1 : prev
         );
         break;
       case 'ArrowUp':
         e.preventDefault();
-        setHighlightedIndex(prev => prev > 0 ? prev - 1 : -1);
+        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : -1));
         break;
       case 'Escape':
         setIsOpen(false);
@@ -134,9 +140,11 @@ export const SkillsInput: React.FC<SkillsInputProps> = ({
 
   return (
     <div className="relative">
-      <div className={`min-h-[42px] border border-gray-300 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all duration-200 ${className}`}>
+      <div
+        className={`min-h-[42px] border border-gray-300 rounded-lg px-3 py-2 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all duration-200 ${className}`}
+      >
         <div className="flex flex-wrap gap-2 items-center">
-          {value.map((skill, index) => (
+          {selected.map((skill, index) => (
             <span
               key={index}
               className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full font-medium"
@@ -158,7 +166,7 @@ export const SkillsInput: React.FC<SkillsInputProps> = ({
             onChange={handleInputChange}
             onFocus={handleInputFocus}
             onKeyDown={handleKeyDown}
-            placeholder={value.length === 0 ? placeholder : ''}
+            placeholder={selected.length === 0 ? placeholder : ''}
             className="flex-1 min-w-[120px] outline-none bg-transparent"
             autoComplete="off"
           />
@@ -176,9 +184,13 @@ export const SkillsInput: React.FC<SkillsInputProps> = ({
               type="button"
               onClick={() => handleSuggestionClick(suggestion)}
               className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors duration-150 flex items-center justify-between ${
-                index === highlightedIndex ? 'bg-blue-50 text-blue-700' : 'text-gray-900'
+                index === highlightedIndex
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-900'
               } ${index === 0 ? 'rounded-t-lg' : ''} ${
-                index === filteredSuggestions.length - 1 ? 'rounded-b-lg' : 'border-b border-gray-100'
+                index === filteredSuggestions.length - 1
+                  ? 'rounded-b-lg'
+                  : 'border-b border-gray-100'
               }`}
             >
               <span className="text-sm font-medium">{suggestion}</span>

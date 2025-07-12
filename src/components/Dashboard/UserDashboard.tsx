@@ -1,14 +1,90 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { useApp } from '../../context/AppContext';
 import { Star, Users, Clock, TrendingUp, CheckCircle, AlertCircle } from 'lucide-react';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = 'https://xlcpkydcyueecugaiucy.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhsY3BreWRjeXVlZWN1Z2FpdWN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIzMDcxNjcsImV4cCI6MjA2Nzg4MzE2N30.qd8xalX2AL_adL5FWRfRLpn7892rIzAe55saPoexzpI';
+export const supabase = createClient(supabaseUrl, supabaseKey);
+
+interface SwapRequest {
+  id: string;
+  from_user_id: string;
+  to_user_id: string;
+  skill_offered: string;
+  skill_wanted: string;
+  status: 'pending' | 'accepted' | 'completed' | 'rejected';
+  created_at: string;
+}
 
 export const UserDashboard: React.FC = () => {
   const { user } = useAuth();
-  const { swapRequests, feedback } = useApp();
+  const [swapRequests, setSwapRequests] = useState<SwapRequest[]>([]);
+  const [userData, setUserData] = useState({
+    totalSwaps: 0,
+    rating: 5.0,
+    skillsOffered: [] as string[],
+    skillsWanted: [] as string[]
+  });
+
+  useEffect(() => {
+    if (user?.id) {
+      fetchUserData();
+    }
+  }, [user?.id]);
+
+  const fetchUserData = async () => {
+    try {
+      // Fetch user's swap requests
+      const { data: swapsData, error: swapsError } = await supabase
+        .from('swap_requests')
+        .select('*')
+        .or(`from_user_id.eq.${user?.id},to_user_id.eq.${user?.id}`);
+
+      if (swapsError) throw swapsError;
+
+      setSwapRequests(swapsData || []);
+
+      // Calculate user stats
+      const completedSwaps = swapsData?.filter(req => req.status === 'completed').length || 0;
+      
+      // Fetch user's skills (assuming you have a 'user_skills' table)
+      const { data: skillsData, error: skillsError } = await supabase
+        .from('user_skills')
+        .select('*')
+        .eq('user_id', user?.id);
+
+      if (skillsError) throw skillsError;
+
+      const skillsOffered = skillsData?.filter(s => s.type === 'offered').map(s => s.skill) || [];
+      const skillsWanted = skillsData?.filter(s => s.type === 'wanted').map(s => s.skill) || [];
+
+      // Fetch user's average rating (assuming you have a 'feedback' table)
+      const { data: ratingData, error: ratingError } = await supabase
+        .from('feedback')
+        .select('rating')
+        .eq('user_id', user?.id);
+
+      if (ratingError) throw ratingError;
+
+      const averageRating = ratingData?.length 
+        ? parseFloat((ratingData.reduce((sum, item) => sum + item.rating, 0) / ratingData.length).toFixed(1))
+        : 5.0;
+
+      setUserData({
+        totalSwaps: completedSwaps,
+        rating: averageRating,
+        skillsOffered,
+        skillsWanted
+      });
+
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    }
+  };
 
   const userRequests = swapRequests.filter(req => 
-    req.fromUserId === user?.id || req.toUserId === user?.id
+    req.from_user_id === user?.id || req.to_user_id === user?.id
   );
 
   const pendingRequests = userRequests.filter(req => req.status === 'pending');
@@ -18,14 +94,14 @@ export const UserDashboard: React.FC = () => {
   const stats = [
     {
       label: 'Total Swaps',
-      value: user?.totalSwaps || 0,
+      value: userData.totalSwaps,
       icon: Users,
       color: 'text-blue-600',
       bgColor: 'bg-blue-50'
     },
     {
       label: 'Rating',
-      value: user?.rating?.toFixed(1) || '5.0',
+      value: userData.rating.toFixed(1),
       icon: Star,
       color: 'text-yellow-600',
       bgColor: 'bg-yellow-50'
@@ -43,7 +119,14 @@ export const UserDashboard: React.FC = () => {
       icon: TrendingUp,
       color: 'text-green-600',
       bgColor: 'bg-green-50'
-    }
+    },
+    {
+    label: 'Completed Swaps',
+    value: completedSwaps.length,
+    icon: CheckCircle,
+    color: 'text-gray-600',
+    bgColor: 'bg-gray-50'
+  },
   ];
 
   return (
@@ -82,8 +165,8 @@ export const UserDashboard: React.FC = () => {
             <div>
               <h3 className="text-sm font-medium text-gray-700 mb-2">Skills You Offer</h3>
               <div className="flex flex-wrap gap-2">
-                {user?.skillsOffered.length ? (
-                  user.skillsOffered.map((skill, index) => (
+                {userData.skillsOffered.length ? (
+                  userData.skillsOffered.map((skill, index) => (
                     <span
                       key={index}
                       className="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full font-medium"
@@ -100,8 +183,8 @@ export const UserDashboard: React.FC = () => {
             <div>
               <h3 className="text-sm font-medium text-gray-700 mb-2">Skills You Want</h3>
               <div className="flex flex-wrap gap-2">
-                {user?.skillsWanted.length ? (
-                  user.skillsWanted.map((skill, index) => (
+                {userData.skillsWanted.length ? (
+                  userData.skillsWanted.map((skill, index) => (
                     <span
                       key={index}
                       className="px-3 py-1 bg-purple-100 text-purple-700 text-sm rounded-full font-medium"
@@ -139,13 +222,13 @@ export const UserDashboard: React.FC = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900">
-                      {request.fromUserId === user?.id ? 'Outgoing' : 'Incoming'} swap request
+                      {request.from_user_id === user?.id ? 'Outgoing' : 'Incoming'} swap request
                     </p>
                     <p className="text-xs text-gray-500">
-                      {request.skillOffered} ↔ {request.skillWanted}
+                      {request.skill_offered} ↔ {request.skill_wanted}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {new Date(request.createdAt).toLocaleDateString()}
+                      {new Date(request.created_at).toLocaleDateString()}
                     </p>
                   </div>
                   <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${

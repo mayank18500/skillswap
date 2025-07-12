@@ -1,10 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown } from 'lucide-react';
 
-interface AutocompleteInputProps {
+export interface AutocompleteInputProps {
   value: string;
   onChange: (value: string) => void;
-  suggestions: string[];
+  options: string[];
   placeholder: string;
   icon?: React.ReactNode;
   className?: string;
@@ -14,7 +14,7 @@ interface AutocompleteInputProps {
 export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
   value,
   onChange,
-  suggestions,
+  options,
   placeholder,
   icon,
   className = '',
@@ -28,20 +28,21 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
 
   useEffect(() => {
     if (value.trim()) {
-      const filtered = suggestions
-        .filter(suggestion => 
-          suggestion.toLowerCase().includes(value.toLowerCase()) &&
-          suggestion.toLowerCase() !== value.toLowerCase()
+      const filtered = options
+        .filter(
+          (suggestion) =>
+            suggestion.toLowerCase().includes(value.toLowerCase()) &&
+            suggestion.toLowerCase() !== value.toLowerCase()
         )
         .slice(0, maxSuggestions);
       setFilteredSuggestions(filtered);
       setIsOpen(filtered.length > 0);
     } else {
-      setFilteredSuggestions(suggestions.slice(0, maxSuggestions));
+      setFilteredSuggestions(options.slice(0, maxSuggestions));
       setIsOpen(false);
     }
     setHighlightedIndex(-1);
-  }, [value, suggestions, maxSuggestions]);
+  }, [value, options, maxSuggestions]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -64,7 +65,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
 
   const handleInputFocus = () => {
     if (!value.trim()) {
-      setFilteredSuggestions(suggestions.slice(0, maxSuggestions));
+      setFilteredSuggestions(options.slice(0, maxSuggestions));
       setIsOpen(true);
     }
   };
@@ -81,13 +82,13 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
     switch (e.key) {
       case 'ArrowDown':
         e.preventDefault();
-        setHighlightedIndex(prev => 
+        setHighlightedIndex((prev) =>
           prev < filteredSuggestions.length - 1 ? prev + 1 : prev
         );
         break;
       case 'ArrowUp':
         e.preventDefault();
-        setHighlightedIndex(prev => prev > 0 ? prev - 1 : -1);
+        setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : -1));
         break;
       case 'Enter':
         e.preventDefault();
@@ -121,7 +122,7 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
           className={`block w-full ${icon ? 'pl-10' : 'pl-3'} pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${className}`}
           autoComplete="off"
         />
-        <ChevronDown 
+        <ChevronDown
           className={`absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 transition-transform duration-200 ${
             isOpen ? 'rotate-180' : ''
           }`}
@@ -139,9 +140,13 @@ export const AutocompleteInput: React.FC<AutocompleteInputProps> = ({
               type="button"
               onClick={() => handleSuggestionClick(suggestion)}
               className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors duration-150 ${
-                index === highlightedIndex ? 'bg-blue-50 text-blue-700' : 'text-gray-900'
+                index === highlightedIndex
+                  ? 'bg-blue-50 text-blue-700'
+                  : 'text-gray-900'
               } ${index === 0 ? 'rounded-t-lg' : ''} ${
-                index === filteredSuggestions.length - 1 ? 'rounded-b-lg' : 'border-b border-gray-100'
+                index === filteredSuggestions.length - 1
+                  ? 'rounded-b-lg'
+                  : 'border-b border-gray-100'
               }`}
             >
               <span className="block text-sm font-medium">{suggestion}</span>
