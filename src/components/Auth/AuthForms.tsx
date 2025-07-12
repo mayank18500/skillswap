@@ -1,13 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Eye, EyeOff, Mail, Lock, User, MapPin, Clock, Shield } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, MapPin,Shield, Loader, Check, X } from 'lucide-react';
 import { AutocompleteInput } from '../UI/AutocompleteInput';
 import { SkillsInput } from '../UI/SkillsInput';
 import { popularCities, popularSkills } from '../../data/suggestions';
-import { supabase } from '../../supabaseClient';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = 'https://xlcpkydcyueecugaiucy.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhsY3BreWRjeXVlZWN1Z2FpdWN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIzMDcxNjcsImV4cCI6MjA2Nzg4MzE2N30.qd8xalX2AL_adL5FWRfRLpn7892rIzAe55saPoexzpI';
+export const supabase = createClient(supabaseUrl, supabaseKey);
 
 export const AuthForms: React.FC = () => {
-  const { login, register, isLoading } = useAuth();
+  const {isLoading } = useAuth();
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -21,27 +25,115 @@ export const AuthForms: React.FC = () => {
     isPublic: true
   });
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [isEmailValid, setIsEmailValid] = useState(false);
+  const [isPasswordValid, setIsPasswordValid] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const availabilityOptions = ['Weekdays', 'Weekends', 'Mornings', 'Afternoons', 'Evenings'];
+
+  // Validate email format
+  useEffect(() => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    setIsEmailValid(emailRegex.test(formData.email));
+  }, [formData.email]);
+
+  // Validate password length
+  useEffect(() => {
+    setIsPasswordValid(formData.password.length >= 6);
+  }, [formData.password]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccessMessage('');
+    setIsSubmitting(true);
+
+    // Additional validation for sign-up
+    if (!isLoginMode) {
+      if (!formData.name.trim()) {
+        setError('Please enter your name');
+        setIsSubmitting(false);
+        return;
+      }
+      if (!isEmailValid) {
+        setError('Please enter a valid email address');
+        setIsSubmitting(false);
+        return;
+      }
+      if (!isPasswordValid) {
+        setError('Password must be at least 6 characters');
+        setIsSubmitting(false);
+        return;
+      }
+    }
 
     try {
       if (isLoginMode) {
-        const success = await login(formData.email, formData.password);
-        if (!success) {
-          setError('Invalid email or password');
+        const { error } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
+
+        if (error) {
+          setError(error.message || 'Invalid email or password');
         }
       } else {
-        const success = await register(formData);
-        if (!success) {
-          setError('Registration failed. Please try again.');
+        // First sign up with Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: {
+              name: formData.name,
+            }
+          }
+        });
+
+        if (authError) {
+          setError(authError.message || 'Registration failed');
+          setIsSubmitting(false);
+          return;
         }
+
+        // Then add to users table
+        const { error: dbError } = await supabase
+          .from('users')
+          .insert([{
+            id: authData.user?.id,
+            name: formData.name,
+            email: formData.email,
+            location: formData.location,
+            skills_offered: formData.skillsOffered,
+            skills_wanted: formData.skillsWanted,
+            availability: formData.availability,
+            is_public: formData.isPublic
+          }]);
+
+        if (dbError) {
+          setError(dbError.message || 'Failed to create user profile');
+          setIsSubmitting(false);
+          return;
+        }
+
+        // If everything succeeded
+        setSuccessMessage('Registration successful! Please check your email to verify your account.');
+        setFormData({
+          name: '',
+          email: '',
+          password: '',
+          location: '',
+          skillsOffered: [],
+          skillsWanted: [],
+          availability: [],
+          isPublic: true
+        });
       }
     } catch (err) {
-      setError('An error occurred. Please try again.');
+      setError('An unexpected error occurred. Please try again.');
+      console.error('Auth error:', err);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -82,7 +174,11 @@ export const AuthForms: React.FC = () => {
             <div className="flex rounded-lg bg-gray-100 p-1">
               <button
                 type="button"
-                onClick={() => setIsLoginMode(true)}
+                onClick={() => {
+                  setIsLoginMode(true);
+                  setError('');
+                  setSuccessMessage('');
+                }}
                 className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
                   isLoginMode
                     ? 'bg-white text-blue-700 shadow-sm'
@@ -93,7 +189,11 @@ export const AuthForms: React.FC = () => {
               </button>
               <button
                 type="button"
-                onClick={() => setIsLoginMode(false)}
+                onClick={() => {
+                  setIsLoginMode(false);
+                  setError('');
+                  setSuccessMessage('');
+                }}
                 className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-all duration-200 ${
                   !isLoginMode
                     ? 'bg-white text-blue-700 shadow-sm'
@@ -115,7 +215,7 @@ export const AuthForms: React.FC = () => {
                   <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                   <input
                     type="text"
-                    required={!isLoginMode}
+                    required
                     value={formData.name}
                     onChange={(e) => setFormData({...formData, name: e.target.value})}
                     className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
@@ -136,9 +236,18 @@ export const AuthForms: React.FC = () => {
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({...formData, email: e.target.value})}
-                  className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                  className={`block w-full pl-10 pr-10 py-2.5 border ${
+                    !isLoginMode && formData.email && !isEmailValid ? 'border-red-300' : 'border-gray-300'
+                  } rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200`}
                   placeholder="Enter your email"
                 />
+                {!isLoginMode && formData.email && (
+                  <span className={`absolute right-3 top-1/2 transform -translate-y-1/2 ${
+                    isEmailValid ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {isEmailValid ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+                  </span>
+                )}
               </div>
             </div>
 
@@ -153,17 +262,33 @@ export const AuthForms: React.FC = () => {
                   required
                   value={formData.password}
                   onChange={(e) => setFormData({...formData, password: e.target.value})}
-                  className="block w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
-                  placeholder="Enter your password"
+                  className={`block w-full pl-10 pr-10 py-2.5 border ${
+                    !isLoginMode && formData.password && !isPasswordValid ? 'border-red-300' : 'border-gray-300'
+                  } rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200`}
+                  placeholder={isLoginMode ? "Enter your password" : "At least 6 characters"}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  className="absolute right-10 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
+                {!isLoginMode && formData.password && (
+                  <span className={`absolute right-3 top-1/2 transform -translate-y-1/2 ${
+                    isPasswordValid ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                    {isPasswordValid ? <Check className="w-4 h-4" /> : <X className="w-4 h-4" />}
+                  </span>
+                )}
               </div>
+              {!isLoginMode && formData.password && (
+                <p className={`mt-1 text-xs ${
+                  isPasswordValid ? 'text-green-600' : 'text-red-600'
+                }`}>
+                  {isPasswordValid ? 'Password is valid' : 'Password must be at least 6 characters'}
+                </p>
+              )}
             </div>
 
             {!isLoginMode && (
@@ -175,7 +300,7 @@ export const AuthForms: React.FC = () => {
                   <AutocompleteInput
                     value={formData.location}
                     onChange={(value) => setFormData({...formData, location: value})}
-                    suggestions={popularCities}
+                    options={popularCities}
                     placeholder="City, State/Country"
                     icon={<MapPin className="w-4 h-4" />}
                   />
@@ -186,9 +311,9 @@ export const AuthForms: React.FC = () => {
                     Skills You Offer
                   </label>
                   <SkillsInput
-                    value={formData.skillsOffered}
+                    selected={formData.skillsOffered}
                     onChange={(skills) => setFormData({...formData, skillsOffered: skills})}
-                    suggestions={popularSkills}
+                    options={popularSkills}
                     placeholder="Type to search and add skills..."
                   />
                 </div>
@@ -198,9 +323,9 @@ export const AuthForms: React.FC = () => {
                     Skills You Want
                   </label>
                   <SkillsInput
-                    value={formData.skillsWanted}
+                    selected={formData.skillsWanted}
                     onChange={(skills) => setFormData({...formData, skillsWanted: skills})}
-                    suggestions={popularSkills}
+                    options={popularSkills}
                     placeholder="Type to search and add skills..."
                   />
                 </div>
@@ -248,12 +373,23 @@ export const AuthForms: React.FC = () => {
               </div>
             )}
 
+            {successMessage && (
+              <div className="text-green-600 text-sm bg-green-50 border border-green-200 rounded-lg p-3">
+                {successMessage}
+              </div>
+            )}
+
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || isSubmitting || (!isLoginMode && (!isEmailValid || !isPasswordValid || !formData.name))}
               className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-[1.02]"
             >
-              {isLoading ? 'Please wait...' : (isLoginMode ? 'Sign In' : 'Create Account')}
+              {isSubmitting ? (
+                <span className="flex items-center justify-center">
+                  <Loader className="animate-spin mr-2 w-4 h-4" />
+                  {isLoginMode ? 'Signing in...' : 'Creating account...'}
+                </span>
+              ) : isLoginMode ? 'Sign In' : 'Create Account'}
             </button>
           </form>
 
@@ -261,8 +397,8 @@ export const AuthForms: React.FC = () => {
             <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
               <h4 className="text-sm font-medium text-blue-900 mb-2">Demo Accounts:</h4>
               <div className="text-xs text-blue-700 space-y-1">
-                <div><strong>User:</strong> alice@example.com / password</div>
-                <div><strong>Admin:</strong> admin@skillswap.com / admin</div>
+                <div><strong>User:</strong> alice@example.com / password123</div>
+                <div><strong>Admin:</strong> admin@skillswap.com / admin123</div>
               </div>
             </div>
           )}
@@ -271,6 +407,3 @@ export const AuthForms: React.FC = () => {
     </div>
   );
 };
-              <div className="mt-2 text-blue-600">
-                <strong>Note:</strong> Create a new account or use any registered email with any password to login
-              </div>

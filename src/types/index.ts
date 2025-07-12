@@ -13,6 +13,8 @@ export interface User {
   totalSwaps: number;
   joinDate: string;
   isActive: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface SwapRequest {
@@ -25,17 +27,23 @@ export interface SwapRequest {
   status: 'pending' | 'accepted' | 'rejected' | 'completed' | 'cancelled';
   createdAt: string;
   updatedAt: string;
-  feedback?: SwapFeedback;
+  from_user?: User;
+  to_user?: User;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface SwapFeedback {
   id: string;
-  swapRequestId: string;
   fromUserId: string;
   toUserId: string;
+  swapRequestId: string;
   rating: number;
   comment: string;
   createdAt: string;
+  from_user?: User;
+  to_user?: User;
+  created_at?: string;
 }
 
 export interface AdminMessage {
@@ -45,19 +53,12 @@ export interface AdminMessage {
   type: 'info' | 'warning' | 'maintenance';
   createdAt: string;
   isActive: boolean;
+  created_at?: string;
 }
 
 export interface ActivityReport {
-  totalUsers: number;
-  activeUsers: number;
-  pendingSwaps: number;
+  date: string;
+  newUsers: number;
+  newSwaps: number;
   completedSwaps: number;
-  averageRating: number;
-  topSkills: { skill: string; count: number }[];
-  recentActivity: {
-    date: string;
-    newUsers: number;
-    newSwaps: number;
-    completedSwaps: number;
-  }[];
 }
