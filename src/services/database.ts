@@ -116,7 +116,7 @@ export class DatabaseService {
     return data;
   }
 
-  static async createSwapRequest(request: Omit<SwapRequest, 'id' | 'createdAt' | 'updatedAt' | 'created_at' | 'updated_at'>): Promise<SwapRequest | null> {
+static async createSwapRequest(request: Omit<SwapRequest, 'id' | 'created_at' | 'updated_at'>): Promise<SwapRequest | null> {
     const { data, error } = await supabase
       .from('swap_requests')
       .insert([request])
