@@ -19,15 +19,15 @@ export const SwapRequests: React.FC = () => {
   };
 
   const userRequests = swapRequests.filter(req => 
-    req.fromUserId === user?.id || req.toUserId === user?.id
+    req.from_user_id === user?.id || req.to_user_id === user?.id
   );
 
   const incomingRequests = userRequests.filter(req => 
-    req.toUserId === user?.id && req.status === 'pending'
+    req.to_user_id === user?.id && req.status === 'pending'
   );
 
   const outgoingRequests = userRequests.filter(req => 
-    req.fromUserId === user?.id && (req.status === 'pending' || req.status === 'accepted')
+    req.from_user_id === user?.id && (req.status === 'pending' || req.status === 'accepted')
   );
 
   const completedRequests = userRequests.filter(req => 
@@ -50,21 +50,7 @@ export const SwapRequests: React.FC = () => {
     updateSwapRequest(requestId, { status: 'completed' });
   };
 
-  const handleFeedback = (swapId: string) => {
-    if (feedbackForm && feedbackForm.rating && feedbackForm.comment) {
-      const swap = swapRequests.find(s => s.id === swapId);
-      if (swap) {
-        addFeedback({
-          swapRequestId: swapId,
-          fromUserId: user!.id,
-          toUserId: swap.fromUserId === user!.id ? swap.toUserId : swap.fromUserId,
-          rating: feedbackForm.rating,
-          comment: feedbackForm.comment
-        });
-        setFeedbackForm(null);
-      }
-    }
-  };
+
 
   const tabs = [
     { id: 'incoming', label: 'Incoming', count: incomingRequests.length },
@@ -129,7 +115,7 @@ export const SwapRequests: React.FC = () => {
                         <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
                           <span className="text-white font-semibold">
                             {getUserName(
-                              request.fromUserId === user?.id ? request.toUserId : request.fromUserId
+                              request.from_user_id === user?.id ? request.to_user_id : request.from_user_id
                             ).charAt(0)}
                           </span>
                         </div>
@@ -137,12 +123,12 @@ export const SwapRequests: React.FC = () => {
                           <h3 className="font-semibold text-gray-900">
                             {activeTab === 'incoming' ? 'From' : 'To'}: {' '}
                             {getUserName(
-                              request.fromUserId === user?.id ? request.toUserId : request.fromUserId
+                              request.from_user_id === user?.id ? request.to_user_id : request.from_user_id
                             )}
                           </h3>
                           <div className="flex items-center space-x-2 text-sm text-gray-500">
                             <Calendar className="w-3 h-3" />
-                            <span>{new Date(request.createdAt).toLocaleDateString()}</span>
+                            <span>{new Date(request.created_at).toLocaleDateString()}</span>
                           </div>
                         </div>
                       </div>
@@ -150,11 +136,11 @@ export const SwapRequests: React.FC = () => {
                       <div className="flex items-center space-x-4 mb-3">
                         <div className="flex items-center space-x-2">
                           <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full font-medium">
-                            {request.skillOffered}
+                            {request.skill_offered}
                           </span>
                           <span className="text-gray-400">↔</span>
                           <span className="px-3 py-1 bg-purple-100 text-purple-700 text-sm rounded-full font-medium">
-                            {request.skillWanted}
+                            {request.skill_wanted}
                           </span>
                         </div>
                       </div>

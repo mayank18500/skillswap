@@ -113,7 +113,7 @@ export const UserProfile: React.FC = () => {
                       <AutocompleteInput
                         value={formData.location}
                         onChange={(value) => setFormData({...formData, location: value})}
-                        suggestions={popularCities}
+                        options={popularCities}
                         placeholder="City, State/Country"
                         icon={<MapPin className="w-4 h-4" />}
                       />
@@ -170,9 +170,9 @@ export const UserProfile: React.FC = () => {
                     </label>
                     {isEditing ? (
                       <SkillsInput
-                        value={formData.skillsOffered}
+                        selected={formData.skillsOffered}
                         onChange={(skills) => setFormData({...formData, skillsOffered: skills})}
-                        suggestions={popularSkills}
+                        options={popularSkills}
                         placeholder="Type to search and add skills..."
                       />
                     ) : (
@@ -199,9 +199,9 @@ export const UserProfile: React.FC = () => {
                     </label>
                     {isEditing ? (
                       <SkillsInput
-                        value={formData.skillsWanted}
+                        selected={formData.skillsWanted}
                         onChange={(skills) => setFormData({...formData, skillsWanted: skills})}
-                        suggestions={popularSkills}
+                        options={popularSkills}
                         placeholder="Type to search and add skills..."
                       />
                     ) : (

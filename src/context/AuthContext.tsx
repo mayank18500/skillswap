@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
 import { DatabaseService } from '../services/database';
+import { supabase } from '../supabaseClient';
 
 interface AuthContextType {
   user: User | null;
@@ -25,82 +26,64 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Use Supabase's auth state change listener for session management
   useEffect(() => {
-    // Load user from localStorage for session persistence
-    const savedUser = localStorage.getItem('skillswap_currentUser');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    }
-    setIsLoading(false);
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        // Fetch the user data from your 'users' table after a successful session
+        DatabaseService.getUserById(session.user.id).then(dbUser => {
+          if (dbUser) {
+            setUser(dbUser);
+          }
+          setIsLoading(false);
+        });
+      } else {
+        setUser(null);
+        setIsLoading(false);
+      }
+    });
+
+    // Cleanup subscription on component unmount
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
-    
-    try {
-      // Check for default admin account
-      if (email === 'admin@skillswap.com' && password === 'admin') {
-        const adminUser: User = {
-          id: 'admin',
-          name: 'Admin User',
-          email: 'admin@skillswap.com',
-          skillsOffered: [],
-          skillsWanted: [],
-          availability: [],
-          isPublic: false,
-          role: 'admin',
-          rating: 5.0,
-          totalSwaps: 0,
-          joinDate: '2024-01-01',
-          isActive: true
-        };
-        
-        setUser(adminUser);
-        localStorage.setItem('skillswap_currentUser', JSON.stringify(adminUser));
-        setIsLoading(false);
-        return true;
-      }
-      
-      // Find user in database
-      const users = await DatabaseService.getUsers();
-      const foundUser = users.find(u => u.email === email);
-      
-      if (foundUser && foundUser.isActive) {
-        // In a real app, you'd verify the password hash
-        // For demo purposes, we'll accept any password for registered users
-        setUser(foundUser);
-        localStorage.setItem('skillswap_currentUser', JSON.stringify(foundUser));
-        setIsLoading(false);
-        return true;
-      }
-      
-      setIsLoading(false);
-      return false;
-    } catch (error) {
-      console.error('Login error:', error);
-      setIsLoading(false);
-      return false;
-    }
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    setIsLoading(false);
+    return !error;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    setIsLoading(true);
+    await supabase.auth.signOut();
     setUser(null);
-    localStorage.removeItem('skillswap_currentUser');
+    setIsLoading(false);
   };
 
   const register = async (userData: Partial<User>): Promise<boolean> => {
     setIsLoading(true);
-    
-    try {
-      // Check if email already exists
-      const users = await DatabaseService.getUsers();
-      const emailExists = users.some(u => u.email === userData.email);
-      
-      if (emailExists) {
-        setIsLoading(false);
-        return false;
+
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: userData.email,
+      password: userData.password,
+      options: {
+        data: {
+          name: userData.name,
+        }
       }
-      
+    });
+
+    if (authError) {
+      console.error('Registration failed:', authError);
+      setIsLoading(false);
+      return false;
+    }
+
+    if (authData.user) {
       const newUser: Omit<User, 'id' | 'created_at' | 'updated_at'> = {
         name: userData.name || '',
         email: userData.email || '',
@@ -115,25 +98,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         joinDate: new Date().toISOString().split('T')[0],
         isActive: true
       };
-      
-      const createdUser = await DatabaseService.createUser(newUser);
-      
-      if (createdUser) {
-        setUser(createdUser);
-        localStorage.setItem('skillswap_currentUser', JSON.stringify(createdUser));
-        setIsLoading(false);
-        return true;
-      }
-      
-      setIsLoading(false);
-      return false;
-    } catch (error) {
-      console.error('Registration error:', error);
-      setIsLoading(false);
-      return false;
-    }
-  };
 
+      const { error: dbError } = await supabase.from('users').insert([{
+        ...newUser,
+        id: authData.user.id,
+      }]);
+
+      if (dbError) {
+        console.error('Failed to create user profile:', dbError);
+        setIsLoading(false);
+        return false;
+      }
+    }
+
+    setIsLoading(false);
+    return true;
+  };
+  
   const updateUser = async (userData: Partial<User>) => {
     if (user) {
       try {
@@ -141,7 +122,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (updatedUser) {
           const newUser = { ...user, ...updatedUser };
           setUser(newUser);
-          localStorage.setItem('skillswap_currentUser', JSON.stringify(newUser));
         }
       } catch (error) {
         console.error('Update user error:', error);

@@ -28,22 +28,11 @@ export const BrowseSkills: React.FC<BrowseSkillsProps> = ({ setActiveTab }) => {
   const loadUsers = async () => {
     setIsLoading(true);
     try {
-      const allUsers = await searchUsers('');
-      const results = allUsers.filter(u => u.id !== user?.id && u.role !== 'admin');
-
-      // Search by skills offered
-      let filtered = results;
-      if (searchTerm.trim()) {
-        const searchLower = searchTerm.toLowerCase();
-        filtered = filtered.filter(searchUser => 
-          searchUser.skillsOffered.some(skill => 
-            skill.toLowerCase().includes(searchLower)
-          ) ||
-          searchUser.name.toLowerCase().includes(searchLower)
-        );
-      }
+      const allUsers = await searchUsers(searchTerm);
+      const results = allUsers.filter(u => u.id !== user?.id && u.role !== 'admin' && u.isActive); // Filter out inactive users
 
       // Filter by location
+      let filtered = results;
       if (locationFilter.trim()) {
         const locationLower = locationFilter.toLowerCase();
         filtered = filtered.filter(searchUser => 

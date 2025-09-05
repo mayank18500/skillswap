@@ -1,17 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Eye, EyeOff, Mail, Lock, User, MapPin,Shield, Loader, Check, X } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, MapPin, Shield, Loader, Check, X } from 'lucide-react';
 import { AutocompleteInput } from '../UI/AutocompleteInput';
 import { SkillsInput } from '../UI/SkillsInput';
 import { popularCities, popularSkills } from '../../data/suggestions';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = 'https://xlcpkydcyueecugaiucy.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhsY3BreWRjeXVlZWN1Z2FpdWN5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTIzMDcxNjcsImV4cCI6MjA2Nzg4MzE2N30.qd8xalX2AL_adL5FWRfRLpn7892rIzAe55saPoexzpI';
-export const supabase = createClient(supabaseUrl, supabaseKey);
+import { supabase } from '../../supabaseClient';
 
 export const AuthForms: React.FC = () => {
-  const {isLoading } = useAuth();
+  const { isLoading, login, register } = useAuth();
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -32,13 +28,11 @@ export const AuthForms: React.FC = () => {
 
   const availabilityOptions = ['Weekdays', 'Weekends', 'Mornings', 'Afternoons', 'Evenings'];
 
-  // Validate email format
   useEffect(() => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     setIsEmailValid(emailRegex.test(formData.email));
   }, [formData.email]);
 
-  // Validate password length
   useEffect(() => {
     setIsPasswordValid(formData.password.length >= 6);
   }, [formData.password]);
@@ -49,7 +43,6 @@ export const AuthForms: React.FC = () => {
     setSuccessMessage('');
     setIsSubmitting(true);
 
-    // Additional validation for sign-up
     if (!isLoginMode) {
       if (!formData.name.trim()) {
         setError('Please enter your name');
@@ -70,64 +63,27 @@ export const AuthForms: React.FC = () => {
 
     try {
       if (isLoginMode) {
-        const { error } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-        });
-
-        if (error) {
-          setError(error.message || 'Invalid email or password');
+        const success = await login(formData.email, formData.password);
+        if (!success) {
+          setError('Invalid email or password');
         }
       } else {
-        // First sign up with Supabase Auth
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: {
-            data: {
-              name: formData.name,
-            }
-          }
-        });
-
-        if (authError) {
-          setError(authError.message || 'Registration failed');
-          setIsSubmitting(false);
-          return;
+        const success = await register(formData);
+        if (success) {
+          setSuccessMessage('Registration successful! Please check your email to verify your account.');
+          setFormData({
+            name: '',
+            email: '',
+            password: '',
+            location: '',
+            skillsOffered: [],
+            skillsWanted: [],
+            availability: [],
+            isPublic: true
+          });
+        } else {
+          setError('Registration failed. The email might already be in use.');
         }
-
-        // Then add to users table
-        const { error: dbError } = await supabase
-          .from('users')
-          .insert([{
-            id: authData.user?.id,
-            name: formData.name,
-            email: formData.email,
-            location: formData.location,
-            skills_offered: formData.skillsOffered,
-            skills_wanted: formData.skillsWanted,
-            availability: formData.availability,
-            is_public: formData.isPublic
-          }]);
-
-        if (dbError) {
-          setError(dbError.message || 'Failed to create user profile');
-          setIsSubmitting(false);
-          return;
-        }
-
-        // If everything succeeded
-        setSuccessMessage('Registration successful! Please check your email to verify your account.');
-        setFormData({
-          name: '',
-          email: '',
-          password: '',
-          location: '',
-          skillsOffered: [],
-          skillsWanted: [],
-          availability: [],
-          isPublic: true
-        });
       }
     } catch (err) {
       setError('An unexpected error occurred. Please try again.');
@@ -398,7 +354,7 @@ export const AuthForms: React.FC = () => {
               <h4 className="text-sm font-medium text-blue-900 mb-2">Demo Accounts:</h4>
               <div className="text-xs text-blue-700 space-y-1">
                 <div><strong>User:</strong> alice@example.com / password123</div>
-                <div><strong>Admin:</strong> admin@skillswap.com / admin123</div>
+                <div><strong>Admin:</strong> admin@skillswap.com / admin</div>
               </div>
             </div>
           )}
