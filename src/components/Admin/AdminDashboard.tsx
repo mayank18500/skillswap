@@ -4,7 +4,7 @@ import { Users, TrendingUp, CheckCircle, Clock, Star, AlertTriangle, MessageSqua
 import { DatabaseService } from '../../services/database';
 
 export const AdminDashboard: React.FC = () => {
-  const { refreshData, isLoading, swapRequests, users } = useApp();
+  const { refreshData, isLoading, swapRequests, users, feedback } = useApp(); // Added feedback from AppContext
   const [analytics, setAnalytics] = useState({
     totalUsers: 0,
     activeUsers: 0,
@@ -24,6 +24,16 @@ export const AdminDashboard: React.FC = () => {
 
     fetchAnalytics();
   }, [users, swapRequests]); // Recalculate if user or swap data changes
+
+  // Client-side calculation for average rating (as a fallback or for real-time updates)
+  const calculateAverageRating = () => {
+    if (feedback.length === 0) {
+      return 5.0;
+    }
+    const totalRating = feedback.reduce((sum, f) => sum + f.rating, 0);
+    return totalRating / feedback.length;
+  };
+
 
   const stats = [
     {
@@ -136,7 +146,7 @@ export const AdminDashboard: React.FC = () => {
                   <p className="text-sm text-gray-600">Based on all user feedback</p>
                 </div>
               </div>
-              <span className="text-2xl font-bold text-gray-900">{analytics.averageRating.toFixed(1)} / 5</span>
+              <span className="text-2xl font-bold text-gray-900">{calculateAverageRating().toFixed(1)} / 5</span>
             </div>
 
             <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
