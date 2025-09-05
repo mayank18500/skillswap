@@ -49,7 +49,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setIsLoading(true);
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -64,18 +64,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(false);
   };
 
-  const register = async (userData: Partial<User>): Promise<boolean> => {
-    setIsLoading(true);
+const register = async (userData: Partial<User & {password?: string}>): Promise<boolean> => {
+  setIsLoading(true);
 
-    const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: userData.email,
-      password: userData.password,
-      options: {
-        data: {
-          name: userData.name,
-        }
+  const { data: authData, error: authError } = await supabase.auth.signUp({
+    email: userData.email || '',
+    password: userData.password || '',
+    options: {
+      data: {
+        name: userData.name,
       }
-    });
+    }
+  });
 
     if (authError) {
       console.error('Registration failed:', authError);
@@ -84,20 +84,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (authData.user) {
-      const newUser: Omit<User, 'id' | 'created_at' | 'updated_at'> = {
-        name: userData.name || '',
-        email: userData.email || '',
-        location: userData.location,
-        skillsOffered: userData.skillsOffered || [],
-        skillsWanted: userData.skillsWanted || [],
-        availability: userData.availability || [],
-        isPublic: userData.isPublic ?? true,
-        role: 'user',
-        rating: 5.0,
-        totalSwaps: 0,
-        joinDate: new Date().toISOString().split('T')[0],
-        isActive: true
-      };
+    const newUser: Omit<User, 'id' | 'created_at' | 'updated_at'> = {
+      name: userData.name || '',
+      email: userData.email || '',
+      location: userData.location,
+      skillsOffered: userData.skillsOffered || [],
+      skillsWanted: userData.skillsWanted || [],
+      availability: userData.availability || [],
+      isPublic: userData.isPublic ?? true,
+      role: 'user',
+      rating: 5.0,
+      totalSwaps: 0,
+      joinDate: new Date().toISOString().split('T')[0],
+      isActive: true
+    };
 
       const { error: dbError } = await supabase.from('users').insert([{
         ...newUser,

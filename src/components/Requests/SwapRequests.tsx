@@ -67,18 +67,22 @@ export const SwapRequests: React.FC = () => {
     }
   };
 
-  const handleFeedback = async (swapId: string) => {
-    if (feedbackForm && user) {
-      await addFeedback({
-        from_user_id: user.id,
-        to_user_id: userRequests.find(req => req.id === swapId)?.from_user_id || '', // Correctly identify recipient
-        swap_request_id: swapId,
-        rating: feedbackForm.rating,
-        comment: feedbackForm.comment,
-      });
-      setFeedbackForm(null);
-    }
-  };
+const handleFeedback = async (swapId: string) => {
+  if (feedbackForm && user) {
+    // Find the swap request to get the correct recipient ID
+    const swap = userRequests.find(req => req.id === swapId);
+    if (!swap) return;
+
+    await addFeedback({
+      from_user_id: user.id,
+      to_user_id: swap.to_user_id, // The user who received the skill is the to_user
+      swap_request_id: swapId,
+      rating: feedbackForm.rating,
+      comment: feedbackForm.comment,
+    });
+    setFeedbackForm(null);
+  }
+};
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
