@@ -116,7 +116,7 @@ export class DatabaseService {
     return data;
   }
 
-static async createSwapRequest(request: Omit<SwapRequest, 'id' | 'created_at' | 'updated_at'>): Promise<SwapRequest | null> {
+  static async createSwapRequest(request: Omit<SwapRequest, 'id' | 'created_at' | 'updated_at'>): Promise<SwapRequest | null> {
     const { data, error } = await supabase
       .from('swap_requests')
       .insert([request])
@@ -180,7 +180,7 @@ static async createSwapRequest(request: Omit<SwapRequest, 'id' | 'created_at' | 
     return data || [];
   }
 
-  static async createFeedback(feedback: Omit<SwapFeedback, 'id' | 'createdAt' | 'created_at'>): Promise<SwapFeedback | null> {
+  static async createFeedback(feedback: Omit<SwapFeedback, 'id' | 'created_at'>): Promise<SwapFeedback | null> {
     const { data, error } = await supabase
       .from('feedback')
       .insert([feedback])
@@ -210,7 +210,7 @@ static async createSwapRequest(request: Omit<SwapRequest, 'id' | 'created_at' | 
     return data || [];
   }
 
-  static async createAdminMessage(message: Omit<AdminMessage, 'id' | 'createdAt' | 'created_at'>): Promise<AdminMessage | null> {
+  static async createAdminMessage(message: Omit<AdminMessage, 'id' | 'created_at'>): Promise<AdminMessage | null> {
     const { data, error } = await supabase
       .from('admin_messages')
       .insert([message])
@@ -256,30 +256,38 @@ static async createSwapRequest(request: Omit<SwapRequest, 'id' | 'created_at' | 
   }
 
   // Search and Analytics
-  static async searchUsers(skill: string): Promise<User[]> {
-    if (!skill.trim()) {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('is_public', true)
-        .eq('is_active', true)
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error searching users:', error);
-        return [];
-      }
-
-      return data || [];
-    }
-
-    const { data, error } = await supabase
+  static async searchUsers(
+    skill: string,
+    filters: {
+      location?: string;
+      rating?: string;
+      availability?: string;
+    } = {}
+  ): Promise<User[]> {
+    let query = supabase
       .from('users')
       .select('*')
       .eq('is_public', true)
-      .eq('is_active', true)
-      .contains('skills_offered', [skill.toLowerCase()])
-      .order('created_at', { ascending: false });
+      .eq('is_active', true);
+
+    if (skill.trim()) {
+      query = query.filter('skills_offered', 'cs', `{${skill}}`);
+    }
+
+    if (filters.location) {
+      query = query.eq('location', filters.location);
+    }
+
+    if (filters.rating && filters.rating !== 'all') {
+      const minRating = parseFloat(filters.rating);
+      query = query.gte('rating', minRating);
+    }
+
+    if (filters.availability && filters.availability !== 'all') {
+      query = query.filter('availability', 'cs', `{${filters.availability}}`);
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error searching users:', error);

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { Camera, MapPin, Clock, Eye, EyeOff, Save } from 'lucide-react';
 import { AutocompleteInput } from '../UI/AutocompleteInput';
@@ -16,6 +16,20 @@ export const UserProfile: React.FC = () => {
     availability: user?.availability || [],
     isPublic: user?.isPublic || true
   });
+
+  // Sync internal state with user prop whenever it changes
+  useEffect(() => {
+    if (user) {
+      setFormData({
+        name: user.name,
+        location: user.location || '',
+        skillsOffered: user.skillsOffered || [],
+        skillsWanted: user.skillsWanted || [],
+        availability: user.availability || [],
+        isPublic: user.isPublic,
+      });
+    }
+  }, [user]);
 
   const availabilityOptions = ['Weekdays', 'Weekends', 'Mornings', 'Afternoons', 'Evenings'];
 
@@ -80,7 +94,7 @@ export const UserProfile: React.FC = () => {
             <div className="space-y-6">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Basic Information</h2>
-                
+
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -162,7 +176,7 @@ export const UserProfile: React.FC = () => {
             <div className="space-y-6">
               <div>
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">Skills</h3>
-                
+
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -231,7 +245,7 @@ export const UserProfile: React.FC = () => {
                   <Clock className="w-4 h-4" />
                   <span className="text-sm">When are you available for skill swaps?</span>
                 </div>
-                
+
                 {isEditing ? (
                   <div className="flex flex-wrap gap-2">
                     {availabilityOptions.map((option) => (

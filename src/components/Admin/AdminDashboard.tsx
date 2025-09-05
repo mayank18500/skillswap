@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
-import { Users, TrendingUp, CheckCircle, Clock, Star, AlertTriangle, MessageSquareText, BarChart2, Briefcase } from 'lucide-react';
+import { Users, TrendingUp, CheckCircle, Clock, Star, AlertTriangle, MessageSquareText, BarChart2, Briefcase, Loader } from 'lucide-react';
+import { DatabaseService } from '../../services/database';
 
 export const AdminDashboard: React.FC = () => {
   const { refreshData, isLoading, swapRequests, users } = useApp();
@@ -13,49 +14,16 @@ export const AdminDashboard: React.FC = () => {
     topSkills: [] as { skill: string; count: number }[]
   });
 
+  // Use a dedicated state for analytics to prevent re-calculations
   useEffect(() => {
-    // We get analytics data by processing the full datasets from AppContext
-    const calculateAnalytics = () => {
-      if (users.length === 0 || swapRequests.length === 0) return;
-
-      const regularUsers = users.filter(u => u.role === 'user');
-      const activeUsers = regularUsers.filter(u => u.isActive).length;
-      const pendingSwaps = swapRequests.filter(r => r.status === 'pending').length;
-      const completedSwaps = swapRequests.filter(r => r.status === 'completed').length;
-      
-      const allRatings = users.flatMap(u => {
-        if (u.rating !== undefined) {
-          return [u.rating];
-        }
-        return [];
-      });
-
-      const averageRating = allRatings.length > 0 
-        ? parseFloat((allRatings.reduce((sum, rating) => sum + rating, 0) / allRatings.length).toFixed(1))
-        : 5.0;
-
-      const skillCounts = regularUsers.flatMap(u => u.skillsOffered).reduce((acc, skill) => {
-        acc[skill] = (acc[skill] || 0) + 1;
-        return acc;
-      }, {} as Record<string, number>);
-
-      const topSkills = Object.entries(skillCounts)
-        .sort(([, a], [, b]) => b - a)
-        .slice(0, 5)
-        .map(([skill, count]) => ({ skill, count }));
-
-      setAnalytics({
-        totalUsers: regularUsers.length,
-        activeUsers,
-        pendingSwaps,
-        completedSwaps,
-        averageRating,
-        topSkills
-      });
+    const fetchAnalytics = async () => {
+      // Use the database service directly to get pre-calculated analytics
+      const analyticsData = await DatabaseService.getAnalytics();
+      setAnalytics(analyticsData);
     };
-    
-    calculateAnalytics();
-  }, [users, swapRequests]);
+
+    fetchAnalytics();
+  }, [users, swapRequests]); // Recalculate if user or swap data changes
 
   const stats = [
     {
@@ -88,6 +56,7 @@ export const AdminDashboard: React.FC = () => {
     }
   ];
 
+  // Show a simple loader based on the AppContext loading state
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-screen">

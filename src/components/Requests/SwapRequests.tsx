@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { Check, X, Trash2, MessageCircle, Star, Calendar } from 'lucide-react';
+import { SwapRequest as SwapRequestType } from '../../types';
 
 export const SwapRequests: React.FC = () => {
   const { swapRequests, updateSwapRequest, addFeedback, users } = useApp();
@@ -50,7 +51,23 @@ export const SwapRequests: React.FC = () => {
     updateSwapRequest(requestId, { status: 'completed' });
   };
 
-
+  const handleFeedback = async (swapId: string) => {
+    if (feedbackForm && user) {
+      const swap = swapRequests.find(req => req.id === swapId);
+      if (!swap) return;
+      
+      const recipientId = swap.from_user_id === user.id ? swap.to_user_id : swap.from_user_id;
+      
+      await addFeedback({
+        from_user_id: user.id,
+        to_user_id: recipientId,
+        swap_request_id: swapId,
+        rating: feedbackForm.rating,
+        comment: feedbackForm.comment,
+      });
+      setFeedbackForm(null);
+    }
+  };
 
   const tabs = [
     { id: 'incoming', label: 'Incoming', count: incomingRequests.length },
@@ -66,23 +83,6 @@ export const SwapRequests: React.FC = () => {
       default: return [];
     }
   };
-
-const handleFeedback = async (swapId: string) => {
-  if (feedbackForm && user) {
-    // Find the swap request to get the correct recipient ID
-    const swap = userRequests.find(req => req.id === swapId);
-    if (!swap) return;
-
-    await addFeedback({
-      from_user_id: user.id,
-      to_user_id: swap.to_user_id, // The user who received the skill is the to_user
-      swap_request_id: swapId,
-      rating: feedbackForm.rating,
-      comment: feedbackForm.comment,
-    });
-    setFeedbackForm(null);
-  }
-};
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import { useAuth } from '../../context/AuthContext';
 import { Search, MapPin, Star, Clock, Filter, X, Send, User } from 'lucide-react';
@@ -24,36 +24,16 @@ export const BrowseSkills: React.FC<BrowseSkillsProps> = ({ setActiveTab }) => {
     message: ''
   });
 
-  // Get all users and filter them
   const loadUsers = async () => {
     setIsLoading(true);
     try {
-      const allUsers = await searchUsers(searchTerm);
-      const results = allUsers.filter(u => u.id !== user?.id && u.role !== 'admin' && u.isActive); // Filter out inactive users
-
-      // Filter by location
-      let filtered = results;
-      if (locationFilter.trim()) {
-        const locationLower = locationFilter.toLowerCase();
-        filtered = filtered.filter(searchUser => 
-          searchUser.location?.toLowerCase().includes(locationLower)
-        );
-      }
-
-      // Filter by rating
-      if (ratingFilter !== 'all') {
-        const minRating = parseFloat(ratingFilter);
-        filtered = filtered.filter(searchUser => searchUser.rating >= minRating);
-      }
-
-      // Filter by availability
-      if (availabilityFilter !== 'all') {
-        filtered = filtered.filter(searchUser => 
-          searchUser.availability.includes(availabilityFilter)
-        );
-      }
-
-      setFilteredUsers(filtered);
+      // Pass all filter criteria to the backend
+      const results = await searchUsers(searchTerm, {
+        location: locationFilter,
+        rating: ratingFilter,
+        availability: availabilityFilter
+      });
+      setFilteredUsers(results);
     } catch (error) {
       console.error('Error loading users:', error);
     } finally {
@@ -65,25 +45,15 @@ export const BrowseSkills: React.FC<BrowseSkillsProps> = ({ setActiveTab }) => {
     loadUsers();
   }, [searchTerm, locationFilter, ratingFilter, availabilityFilter, user?.id]);
 
-  // Get unique locations for filter
-  const availableLocations = useMemo(() => {
-    const locations = filteredUsers
-      .map(u => u.location)
-      .filter(Boolean)
-      .map(loc => loc!);
-    return [...new Set(locations)].sort();
-  }, [filteredUsers]);
-
-  // Get unique availability options
   const availabilityOptions = ['Weekdays', 'Weekends', 'Mornings', 'Afternoons', 'Evenings'];
 
   const handleCreateSwap = async () => {
-    if (selectedUser && swapForm.skillOffered && swapForm.skillWanted) {
+    if (selectedUser && user && swapForm.skillOffered && swapForm.skillWanted) {
       await createSwapRequest({
-        fromUserId: user!.id,
-        toUserId: selectedUser.id,
-        skillOffered: swapForm.skillOffered,
-        skillWanted: swapForm.skillWanted,
+        from_user_id: user.id,
+        to_user_id: selectedUser.id,
+        skill_offered: swapForm.skillOffered,
+        skill_wanted: swapForm.skillWanted,
         message: swapForm.message,
         status: 'pending'
       });
@@ -132,8 +102,8 @@ export const BrowseSkills: React.FC<BrowseSkillsProps> = ({ setActiveTab }) => {
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">All Locations</option>
-              {availableLocations.map((location) => (
-                <option key={location} value={location}>{location}</option>
+              {filteredUsers.map((user) => (
+                <option key={user.id} value={user.location || ''}>{user.location}</option>
               ))}
             </select>
           </div>

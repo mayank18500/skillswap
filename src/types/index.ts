@@ -25,8 +25,8 @@ export interface SwapRequest {
   skill_wanted: string;
   message: string;
   status: 'pending' | 'accepted' | 'rejected' | 'completed' | 'cancelled';
-  created_at: string; // ✅ Corrected from createdAt
-  updated_at: string; // ✅ Corrected from updatedAt
+  created_at: string;
+  updated_at: string;
   from_user?: User;
   to_user?: User;
   feedback?: SwapFeedback;

@@ -29,7 +29,7 @@ export const UserDashboard: React.FC = () => {
   }, [user?.id, users]);
 
   const userRequests = swapRequests.filter(req => 
-    req.fromUserId === user?.id || req.toUserId === user?.id
+    req.from_user_id === user?.id || req.to_user_id === user?.id
   );
 
   const pendingRequests = userRequests.filter(req => req.status === 'pending');
@@ -167,13 +167,13 @@ export const UserDashboard: React.FC = () => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900">
-                      {request.fromUserId === user?.id ? 'Outgoing' : 'Incoming'} swap request
+                      {request.from_user_id === user?.id ? 'Outgoing' : 'Incoming'} swap request
                     </p>
                     <p className="text-xs text-gray-500">
-                      {request.skillOffered} ↔ {request.skillWanted}
+                      {request.skill_offered} ↔ {request.skill_wanted}
                     </p>
                     <p className="text-xs text-gray-500">
-                      {new Date(request.createdAt).toLocaleDateString()}
+                      {new Date(request.created_at).toLocaleDateString()}
                     </p>
                   </div>
                   <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${

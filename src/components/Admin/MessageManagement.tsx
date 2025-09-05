@@ -4,23 +4,47 @@ import { Plus, Send, Edit, Trash2, AlertTriangle, Info, Settings } from 'lucide-
 import { AdminMessage } from '../../types';
 
 export const MessageManagement: React.FC = () => {
-  const { adminMessages, addAdminMessage } = useApp();
+  const { adminMessages, addAdminMessage, updateAdminMessage, deleteAdminMessage } = useApp();
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     content: '',
     type: 'info' as AdminMessage['type']
   });
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.title && formData.content) {
-      addAdminMessage({
-        ...formData,
-        isActive: true
-      });
+      if (editingId) {
+        // Handle update
+        updateAdminMessage(editingId, { ...formData });
+        setEditingId(null);
+      } else {
+        // Handle add
+        addAdminMessage({
+          ...formData,
+          isActive: true
+        });
+      }
       setFormData({ title: '', content: '', type: 'info' });
       setShowForm(false);
+    }
+  };
+
+  const handleEdit = (message: AdminMessage) => {
+    setFormData({
+      title: message.title,
+      content: message.content,
+      type: message.type
+    });
+    setEditingId(message.id);
+    setShowForm(true);
+  };
+
+  const handleDelete = (id: string) => {
+    if (window.confirm('Are you sure you want to delete this message?')) {
+      deleteAdminMessage(id);
     }
   };
 
@@ -66,7 +90,7 @@ export const MessageManagement: React.FC = () => {
       {/* Message Form */}
       {showForm && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Create Platform Message</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">{editingId ? 'Edit Message' : 'Create Platform Message'}</h2>
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
@@ -114,7 +138,11 @@ export const MessageManagement: React.FC = () => {
             <div className="flex space-x-3">
               <button
                 type="button"
-                onClick={() => setShowForm(false)}
+                onClick={() => {
+                  setShowForm(false);
+                  setEditingId(null);
+                  setFormData({ title: '', content: '', type: 'info' });
+                }}
                 className="flex-1 bg-gray-200 text-gray-800 py-2 rounded-lg font-medium hover:bg-gray-300 transition-colors duration-200"
               >
                 Cancel
@@ -124,7 +152,7 @@ export const MessageManagement: React.FC = () => {
                 className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white py-2 rounded-lg font-medium hover:from-blue-700 hover:to-purple-700 transition-all duration-200 flex items-center justify-center space-x-2"
               >
                 <Send className="w-4 h-4" />
-                <span>Send Message</span>
+                <span>{editingId ? 'Save Changes' : 'Send Message'}</span>
               </button>
             </div>
           </form>
@@ -160,7 +188,7 @@ export const MessageManagement: React.FC = () => {
                           {message.type}
                         </span>
                         <span className="text-xs text-gray-500">
-                          {new Date(message.createdAt).toLocaleDateString()}
+                          {new Date(message.created_at).toLocaleDateString()}
                         </span>
                       </div>
                     </div>
@@ -169,18 +197,24 @@ export const MessageManagement: React.FC = () => {
                     
                     <div className="flex items-center justify-between">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        message.isActive 
+                        message.is_active
                           ? 'bg-green-100 text-green-800'
                           : 'bg-gray-100 text-gray-800'
                       }`}>
-                        {message.isActive ? 'Active' : 'Inactive'}
+                        {message.is_active ? 'Active' : 'Inactive'}
                       </span>
                       
                       <div className="flex space-x-2">
-                        <button className="p-1 text-gray-500 hover:text-blue-600 transition-colors duration-200">
+                        <button
+                          onClick={() => handleEdit(message)}
+                          className="p-1 text-gray-500 hover:text-blue-600 transition-colors duration-200"
+                        >
                           <Edit className="w-4 h-4" />
                         </button>
-                        <button className="p-1 text-gray-500 hover:text-red-600 transition-colors duration-200">
+                        <button
+                          onClick={() => handleDelete(message.id)}
+                          className="p-1 text-gray-500 hover:text-red-600 transition-colors duration-200"
+                        >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
